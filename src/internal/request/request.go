@@ -40,9 +40,13 @@ func RequestFromReader(request string) (*Request, error) {
 func lineParser(b []byte) (*RequestLine, error) {
 	l := strings.Split(string(b), "\r\n")
 	requestLine := strings.Split(l[0], " ")
+
+	if len(requestLine) < 3 {
+		return nil, errors.New("incomplete request")
+	}
 	method := requestLine[0]
 	target := requestLine[1]
-	version := requestLine[2]
+	version := strings.Split(requestLine[2], "/")[1]
 
 	for _, v := range method {
 		if !unicode.IsUpper(v) || !unicode.IsLetter(v) {
@@ -51,7 +55,7 @@ func lineParser(b []byte) (*RequestLine, error) {
 		}
 	}
 
-	if strings.Split(target, "/")[1] != "1.1" {
+	if version != "1.1" {
 		fmt.Println("invalid version")
 		return nil, errors.New("Failed to parse http version")
 	}
