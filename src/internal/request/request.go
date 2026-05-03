@@ -1,1 +1,64 @@
 package request
+
+import (
+	"errors"
+	"fmt"
+	"io"
+	"strings"
+	"unicode"
+)
+
+type RequestLine struct {
+	Method  string
+	Target  string
+	Version string
+}
+
+type Request struct {
+	RequestLine RequestLine
+}
+
+func RequestFromReader(request string) (*Request, error) {
+	if request == "" {
+		return nil, errors.New("missing request string")
+	}
+	r := strings.NewReader(request)
+	buffer, err := io.ReadAll(r)
+	if err != nil {
+		fmt.Println("unexpected error  " + err.Error())
+		return nil, errors.New("io fail")
+	}
+	rl, err := lineParser(buffer)
+	if err != nil {
+		fmt.Println("function call failed")
+		return nil, errors.New("function fail")
+	}
+
+	return &Request{RequestLine: *rl}, nil
+}
+
+func lineParser(b []byte) (*RequestLine, error) {
+	l := strings.Split(string(b), "\r\n")
+	requestLine := strings.Split(l[0], " ")
+	method := requestLine[0]
+	target := requestLine[1]
+	version := requestLine[2]
+
+	for _, v := range method {
+		if !unicode.IsUpper(v) || !unicode.IsLetter(v) {
+			fmt.Println("invalid method")
+			return nil, errors.New("Failed to parse method")
+		}
+	}
+
+	if strings.Split(target, "/")[1] != "1.1" {
+		fmt.Println("invalid version")
+		return nil, errors.New("Failed to parse http version")
+	}
+
+	return &RequestLine{
+		Method:  method,
+		Target:  target,
+		Version: version,
+	}, nil
+}
