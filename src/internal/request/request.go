@@ -9,21 +9,17 @@ import (
 )
 
 type RequestLine struct {
-	Method  string
-	Target  string
-	Version string
+	Method        string
+	RequestTarget string
+	HttpVersion   string
 }
 
 type Request struct {
 	RequestLine RequestLine
 }
 
-func RequestFromReader(request string) (*Request, error) {
-	if request == "" {
-		return nil, errors.New("missing request string")
-	}
-	r := strings.NewReader(request)
-	buffer, err := io.ReadAll(r)
+func RequestFromReader(reader io.Reader) (*Request, error) {
+	buffer, err := io.ReadAll(reader)
 	if err != nil {
 		fmt.Println("unexpected error  " + err.Error())
 		return nil, errors.New("io fail")
@@ -61,8 +57,8 @@ func lineParser(b []byte) (*RequestLine, error) {
 	}
 
 	return &RequestLine{
-		Method:  method,
-		Target:  target,
-		Version: version,
+		Method:        method,
+		RequestTarget: target,
+		HttpVersion:   version,
 	}, nil
 }
