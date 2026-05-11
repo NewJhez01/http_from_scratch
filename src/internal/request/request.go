@@ -8,6 +8,8 @@ import (
 	"unicode"
 )
 
+const bufferSize = 8
+
 type RequestLine struct {
 	Method        string
 	RequestTarget string
@@ -16,25 +18,55 @@ type RequestLine struct {
 
 type Request struct {
 	RequestLine RequestLine
+	status      int
 }
 
-func RequestFromReader1(r io.Reader) (*Request, error) {
-	buffer := make([]byte, 8)
-	n, err := r.Read(buffer)
-	if err != nil {
-		fmt.Println("unexpected error  " + err.Error())
-		return nil, errors.New("io fail")
+// init = 0 done = 1
+func RequestFromReader(r io.Reader) (Request, error) {
+	buffer := make([]byte, bufferSize)
+	readToIndex := 0
+	req := Request{status: 0}
+	for req.status == 0 {
+		n, err := r.Read(buffer[readToIndex:])
+		if err == io.EOF && n == 0 {
+			req.status = 1
+			break
+		}
+		readToIndex += n
+		if readToIndex == cap(buffer) {
+			tmp := make([]byte, len(buffer)*2)
+			copy(tmp, buffer)
+			buffer = tmp
+		}
+		p, err := req.parse(buffer)
+		if err != nil {
+			fmt.Println("error when parsing")
+		}
+		tmp := make([]byte, len(buffer)-p)
+		copy(tmp, buffer[p:])
+		buffer = tmp
+		readToIndex -= p
 	}
-	rl, _, err := lineParser1(n, buffer)
-	if err != nil {
-		fmt.Println("function call failed")
-		return nil, errors.New("function fail")
-	}
-
-	return &Request{RequestLine: *rl}, nil
+	return req, nil
 }
 
-func lineParser1(n int, b []byte) (*RequestLine, int, error) {
+func (r *Request) parse(data []byte) (int, error) {
+	if r.status == 1 {
+		return 0, errors.New("already done")
+	}
+	rql, bytesParsed, err := parseRequestLine(data)
+	if err != nil {
+		return 0, errors.New("error")
+	}
+	if bytesParsed == 0 {
+		return 0, nil
+	}
+	r.RequestLine = *rql
+	r.status = 1
+	return bytesParsed, nil
+}
+
+func parseRequestLine(b []byte) (*RequestLine, int, error) {
 	if !strings.Contains(string(b), "\r\n") {
 		return nil, 0, nil
 	}
@@ -64,5 +96,5 @@ func lineParser1(n int, b []byte) (*RequestLine, int, error) {
 		Method:        method,
 		RequestTarget: target,
 		HttpVersion:   version,
-	}, n, nil
+	}, len(l[0]) + 2, nil
 }
