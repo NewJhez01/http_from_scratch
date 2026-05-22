@@ -2,6 +2,7 @@ package headers
 
 import (
 	"errors"
+	"regexp"
 	"strings"
 )
 
@@ -13,11 +14,12 @@ func NewHeaders() Headers {
 
 func (h Headers) Parse(data []byte) (int, bool, error) {
 	consumed := 0
+
 	if !strings.Contains(string(data), "\r\n") {
-		return 0, false, nil
+		return consumed, false, nil
 	}
 	if strings.HasPrefix(string(data), "\r\n") {
-		return 2, true, nil
+		return consumed + 2, true, nil
 	}
 
 	line := strings.Split(string(data), "\r\n")
@@ -30,9 +32,35 @@ func (h Headers) Parse(data []byte) (int, bool, error) {
 	if strings.HasPrefix(key, " ") || strings.HasSuffix(key, " ") {
 		return 0, false, errors.New("invalid header key")
 	}
-	trimmedVal := strings.Trim(val, " ")
 
-	h[key] = trimmedVal
+	if validate(key) == false {
+		return 0, false, errors.New("invalid header key")
+	}
+
+	trimmedVal := strings.Trim(val, " ")
+	if validate(trimmedVal) == false {
+		return 0, false, errors.New("invalid format for val")
+	}
+
+	keyArr := strings.Split(key, "")
+	for i, v := range keyArr {
+		keyArr[i] = strings.ToLower(v)
+	}
+
+	valArr := strings.Split(trimmedVal, "")
+	for i, v := range valArr {
+		valArr[i] = strings.ToLower(v)
+	}
+
+	h[strings.Join(keyArr, "")] = strings.Join(valArr, "")
 
 	return len(key) + len(val) + consumed, false, nil
+}
+
+func validate(v string) bool {
+	m, err := regexp.Match("^[a-zA-Z0-9_!/#$%&'*+.^_`|~:-]*$", []byte(v))
+	if m == false || err != nil {
+		return false
+	}
+	return true
 }

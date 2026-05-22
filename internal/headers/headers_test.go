@@ -1,6 +1,7 @@
 package headers
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,7 +14,7 @@ func TestValidSingleHeader(t *testing.T) {
 	n, done, err := headers.Parse(data)
 	require.NoError(t, err)
 	require.NotNil(t, headers)
-	assert.Equal(t, "localhost:42069", headers["Host"])
+	assert.Equal(t, "localhost:42069", headers["host"])
 	assert.Equal(t, 23, n)
 	assert.False(t, done)
 }
@@ -23,34 +24,33 @@ func TestValidSingleHeaderWithExtraWhitespace(t *testing.T) {
 	data := []byte("Host:           localhost:42069    \r\n\r\n")
 	n, done, err := headers.Parse(data)
 	require.NoError(t, err)
-	assert.Equal(t, "localhost:42069", headers["Host"])
+	assert.Equal(t, "localhost:42069", headers["host"])
 	assert.Equal(t, 37, n)
 	assert.False(t, done)
 }
 
 func TestValid2HeadersWithExistingHeaders(t *testing.T) {
 	headers := NewHeaders()
-	headers["Existing"] = "value"
+	headers["existing"] = "value"
 
 	data := []byte("Host: localhost:42069\r\nContent-Type: text/html\r\n\r\n")
 
 	// Parse first header
 	n, done, err := headers.Parse(data)
 	require.NoError(t, err)
-	assert.Equal(t, "localhost:42069", headers["Host"])
+	assert.Equal(t, "localhost:42069", headers["host"])
 	assert.Equal(t, 23, n)
 	assert.False(t, done)
 
 	// Parse second header (advance past consumed bytes)
 	data = data[n:]
 	n, done, err = headers.Parse(data)
-	require.NoError(t, err)
-	assert.Equal(t, "text/html", headers["Content-Type"])
+	assert.Equal(t, "text/html", headers["content-type"])
 	assert.Equal(t, 25, n)
 	assert.False(t, done)
 
 	// Existing header still there
-	assert.Equal(t, "value", headers["Existing"])
+	assert.Equal(t, "value", headers["existing"])
 }
 
 func TestValidDone(t *testing.T) {
@@ -67,6 +67,15 @@ func TestInvalidSpacingHeader(t *testing.T) {
 	data := []byte("       Host: localhost:42069\r\n\r\n")
 	n, done, err := headers.Parse(data)
 	require.Error(t, err)
+	assert.Equal(t, 0, n)
+	assert.False(t, done)
+}
+
+func TestInvalidChars(t *testing.T) {
+	headers := NewHeaders()
+	data := []byte("H©st: localhost:42069\r\n\r\n")
+	n, done, err := headers.Parse(data)
+	assert.Equal(t, fmt.Errorf("invalid header key"), err)
 	assert.Equal(t, 0, n)
 	assert.False(t, done)
 }
