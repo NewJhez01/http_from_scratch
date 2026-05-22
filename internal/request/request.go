@@ -69,7 +69,6 @@ func (r *Request) parse(data []byte) (int, error) {
 	r.Headers = headers.NewHeaders()
 
 	for {
-		fmt.Println("data " + string(data[bytesParsed:]))
 		n, d, err := r.Headers.Parse(data[bytesParsed:])
 		if err != nil {
 			log.Fatal("unexpected error")
@@ -81,10 +80,8 @@ func (r *Request) parse(data []byte) (int, error) {
 		if d == true {
 			break
 		}
-		fmt.Println("bytes: ", bytesParsed)
 
 	}
-	fmt.Println(r.Headers)
 	r.status = 1
 	return bytesParsed, nil
 }

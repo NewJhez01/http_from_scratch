@@ -17,8 +17,13 @@ func main() {
 	if err != nil {
 		fmt.Println("connection failed")
 	}
-	lines, err := request.RequestFromReader(conn)
-	fmt.Println("Method: " + lines.RequestLine.Method)
-	fmt.Println("Target: " + lines.RequestLine.RequestTarget)
-	fmt.Println("Version: " + lines.RequestLine.HttpVersion)
+	req, err := request.RequestFromReader(conn)
+	fmt.Println("Request:")
+	fmt.Println("Method: " + req.RequestLine.Method)
+	fmt.Println("Target: " + req.RequestLine.RequestTarget)
+	fmt.Println("Version: " + req.RequestLine.HttpVersion)
+	fmt.Println("Headers:")
+	for k, v := range req.Headers {
+		fmt.Println(k + ": " + v)
+	}
 }
