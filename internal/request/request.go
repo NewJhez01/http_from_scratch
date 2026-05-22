@@ -4,8 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"strings"
 	"unicode"
+
+	"http_from_scratch/internal/headers"
 )
 
 const bufferSize = 8
@@ -18,6 +21,7 @@ type RequestLine struct {
 
 type Request struct {
 	RequestLine RequestLine
+	Headers     headers.Headers
 	status      int
 }
 
@@ -62,6 +66,25 @@ func (r *Request) parse(data []byte) (int, error) {
 		return 0, nil
 	}
 	r.RequestLine = *rql
+	r.Headers = headers.NewHeaders()
+
+	for {
+		fmt.Println("data " + string(data[bytesParsed:]))
+		n, d, err := r.Headers.Parse(data[bytesParsed:])
+		if err != nil {
+			log.Fatal("unexpected error")
+		}
+		if n == 0 {
+			return 0, nil
+		}
+		bytesParsed += n
+		if d == true {
+			break
+		}
+		fmt.Println("bytes: ", bytesParsed)
+
+	}
+	fmt.Println(r.Headers)
 	r.status = 1
 	return bytesParsed, nil
 }
