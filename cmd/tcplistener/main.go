@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 
-	"http_from_scratch/src/internal/request"
+	"http_from_scratch/internal/request"
 )
 
 func main() {
