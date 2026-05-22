@@ -35,22 +35,39 @@ func TestValid2HeadersWithExistingHeaders(t *testing.T) {
 
 	data := []byte("Host: localhost:42069\r\nContent-Type: text/html\r\n\r\n")
 
-	// Parse first header
 	n, done, err := headers.Parse(data)
 	require.NoError(t, err)
 	assert.Equal(t, "localhost:42069", headers["host"])
 	assert.Equal(t, 23, n)
 	assert.False(t, done)
 
-	// Parse second header (advance past consumed bytes)
 	data = data[n:]
 	n, done, err = headers.Parse(data)
 	assert.Equal(t, "text/html", headers["content-type"])
 	assert.Equal(t, 25, n)
 	assert.False(t, done)
 
-	// Existing header still there
 	assert.Equal(t, "value", headers["existing"])
+}
+
+func TestValid2HeadersWithSameHeader(t *testing.T) {
+	headers := NewHeaders()
+
+	data := []byte("Set-Person: value1\r\nSet-Person: value2\r\nSet-Person: value3\r\n\r\n")
+	n := 0
+	for {
+		num, d, err := headers.Parse(data[n:])
+		if err != nil {
+			t.Errorf("unexpected error")
+		}
+		n += num
+		if d == true {
+			break
+		}
+	}
+
+	assert.Equal(t, len(data), n)
+	assert.Equal(t, "value1, value2, value3", headers["set-person"])
 }
 
 func TestValidDone(t *testing.T) {

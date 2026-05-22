@@ -54,4 +54,5 @@ func TestRequestParser(t *testing.T) {
 	assert.Equal(t, "GET", r.RequestLine.Method)
 	assert.Equal(t, "/coffee", r.RequestLine.RequestTarget)
 	assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
+	assert.Equal(t, "localhost:42069", r.Headers["host"])
 }

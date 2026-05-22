@@ -2,6 +2,7 @@ package headers
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 )
@@ -52,7 +53,13 @@ func (h Headers) Parse(data []byte) (int, bool, error) {
 		valArr[i] = strings.ToLower(v)
 	}
 
-	h[strings.Join(keyArr, "")] = strings.Join(valArr, "")
+	header := strings.Join(keyArr, "")
+	value := strings.Join(valArr, "")
+	if h[header] != "" {
+		h[header] = fmt.Sprintf("%s, %s", h[header], value)
+	} else {
+		h[header] = value
+	}
 
 	return len(key) + len(val) + consumed, false, nil
 }
