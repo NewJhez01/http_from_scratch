@@ -13,6 +13,10 @@ func NewHeaders() Headers {
 	return make(Headers)
 }
 
+func (h Headers) Get(key string) string {
+	return h[key]
+}
+
 func (h Headers) Parse(data []byte) (int, bool, error) {
 	consumed := 0
 
