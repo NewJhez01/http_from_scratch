@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -22,7 +22,8 @@ type RequestLine struct {
 type Request struct {
 	RequestLine RequestLine
 	Headers     headers.Headers
-	status      int
+	status      int // 0=init 1 done with request line 2 done with header 3 done with body
+	Body        []byte
 }
 
 // init = 0 done = 1
@@ -30,11 +31,10 @@ func RequestFromReader(r io.Reader) (Request, error) {
 	buffer := make([]byte, bufferSize)
 	readToIndex := 0
 	req := Request{status: 0}
-	for req.status == 0 {
+	for req.status != 3 {
 		n, err := r.Read(buffer[readToIndex:])
-		if err == io.EOF && n == 0 {
-			req.status = 1
-			break
+		if err == io.EOF {
+			req.status = 3
 		}
 		readToIndex += n
 		if readToIndex == cap(buffer) {
@@ -42,9 +42,9 @@ func RequestFromReader(r io.Reader) (Request, error) {
 			copy(tmp, buffer)
 			buffer = tmp
 		}
-		p, err := req.parse(buffer)
+		p, err := req.parse(buffer[:readToIndex])
 		if err != nil {
-			fmt.Println("error when parsing")
+			return req, fmt.Errorf("failed to parse request prev: %s", err.Error())
 		}
 		tmp := make([]byte, len(buffer)-p)
 		copy(tmp, buffer[p:])
@@ -55,35 +55,43 @@ func RequestFromReader(r io.Reader) (Request, error) {
 }
 
 func (r *Request) parse(data []byte) (int, error) {
-	if r.status == 1 {
-		return 0, errors.New("already done")
-	}
-	rql, bytesParsed, err := parseRequestLine(data)
-	if err != nil {
-		return 0, errors.New("error")
-	}
-	if bytesParsed == 0 {
-		return 0, nil
-	}
-	r.RequestLine = *rql
-	r.Headers = headers.NewHeaders()
-
-	for {
-		n, d, err := r.Headers.Parse(data[bytesParsed:])
+	switch r.status {
+	case 0:
+		rql, bytesParsed, err := parseRequestLine(data)
 		if err != nil {
-			log.Fatal("unexpected error")
+			return 0, errors.New("error")
 		}
-		if n == 0 {
+		if bytesParsed == 0 {
 			return 0, nil
 		}
-		bytesParsed += n
-		if d == true {
-			break
+		r.RequestLine = *rql
+		r.status = 1
+		r.Headers = headers.NewHeaders()
+		return bytesParsed, nil
+	case 1:
+		n, done, err := r.Headers.Parse(data)
+		if err != nil {
+			return 0, errors.New("failed to parse headers")
 		}
-
+		if done == true {
+			r.status = 2
+		}
+		return n, nil
+	case 2:
+		r.Body = append(r.Body, data...)
+		return len(data), nil
+	case 3:
+		contentLen, err := strconv.Atoi(r.Headers["content-length"])
+		if err != nil {
+			contentLen = 0
+		}
+		if contentLen != len(r.Body) {
+			return 0, errors.New("content length doesn't match the header def")
+		}
+		return 0, nil
 	}
-	r.status = 1
-	return bytesParsed, nil
+
+	return 0, nil
 }
 
 func parseRequestLine(b []byte) (*RequestLine, int, error) {
