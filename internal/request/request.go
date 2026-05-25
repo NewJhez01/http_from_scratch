@@ -26,14 +26,13 @@ type Request struct {
 	Body        []byte
 }
 
-// init = 0 done = 1
 func RequestFromReader(r io.Reader) (Request, error) {
 	buffer := make([]byte, bufferSize)
 	readToIndex := 0
 	req := Request{status: 0}
 	for req.status != 3 {
 		n, err := r.Read(buffer[readToIndex:])
-		if err == io.EOF {
+		if err == io.EOF && n == 0 && readToIndex == 0 {
 			req.status = 3
 		}
 		readToIndex += n
@@ -81,10 +80,16 @@ func (r *Request) parse(data []byte) (int, error) {
 		r.Body = append(r.Body, data...)
 		return len(data), nil
 	case 3:
-		contentLen, err := strconv.Atoi(r.Headers["content-length"])
-		if err != nil {
-			contentLen = 0
+		contenHeader := r.Headers["content-length"]
+		contentLen := 0
+		if contenHeader != "" {
+			n, err := strconv.Atoi(r.Headers["content-length"])
+			if err != nil {
+				fmt.Println("error ", err.Error())
+			}
+			contentLen = n
 		}
+
 		if contentLen != len(r.Body) {
 			return 0, errors.New("content length doesn't match the header def")
 		}

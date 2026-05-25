@@ -18,19 +18,17 @@ func (h Headers) Get(key string) string {
 }
 
 func (h Headers) Parse(data []byte) (int, bool, error) {
-	consumed := 0
+	fmt.Printf("Parse input: %q\n", string(data))
 
 	if !strings.Contains(string(data), "\r\n") {
-		return consumed, false, nil
+		return 0, false, nil
 	}
 	if strings.HasPrefix(string(data), "\r\n") {
-		return consumed + 2, true, nil
+		return 2, true, nil
 	}
 
 	line := strings.Split(string(data), "\r\n")
-	consumed += 2
 	parts := strings.Split(string(line[0]), ":")
-	consumed += 1
 	key := parts[0]
 	val := strings.Join(parts[1:], ":")
 
@@ -61,11 +59,13 @@ func (h Headers) Parse(data []byte) (int, bool, error) {
 	value := strings.Join(valArr, "")
 	if h[header] != "" {
 		h[header] = fmt.Sprintf("%s, %s", h[header], value)
+		fmt.Println("header ", h[header])
 	} else {
 		h[header] = value
+		fmt.Println("header ", h[header])
 	}
 
-	return len(key) + len(val) + consumed, false, nil
+	return len(line[0]) + 2, false, nil
 }
 
 func validate(v string) bool {
