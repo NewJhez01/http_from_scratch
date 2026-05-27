@@ -11,7 +11,18 @@ import (
 	"http_from_scratch/internal/headers"
 )
 
-const bufferSize = 8
+const (
+	bufferSize = 8
+)
+
+type state int
+
+const (
+	requestLine state = 0
+	header      state = 1
+	body        state = 2
+	done        state = 3
+)
 
 type RequestLine struct {
 	Method        string
@@ -22,7 +33,7 @@ type RequestLine struct {
 type Request struct {
 	RequestLine RequestLine
 	Headers     headers.Headers
-	status      int // 0=init 1 done with request line 2 done with header 3 done with body
+	status      state
 	Body        []byte
 }
 
