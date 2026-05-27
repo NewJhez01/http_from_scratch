@@ -5,6 +5,8 @@ import (
 	"net"
 	"strconv"
 	"sync/atomic"
+
+	"http_from_scratch/internal/response"
 )
 
 type Server struct {
@@ -46,12 +48,13 @@ func (s *Server) listen() {
 
 func (s *Server) handle(conn net.Conn) {
 	defer conn.Close()
-	resp := "HTTP/1.1 200 OK\r\n" +
-		"Content-Type: text/plain\r\n" +
-		"\r\n" +
-		"Hello World!"
-	_, err := conn.Write([]byte(resp))
+	err := response.WriteStatusLine(conn, 200)
 	if err != nil {
-		log.Println("failed to write response")
+		log.Fatalf("unexpected error prev: %s", err.Error())
+	}
+	h := response.GetDefaultHeaders(0)
+	err = response.WriteHeaders(conn, h)
+	if err != nil {
+		log.Fatalf("unexpected error prev: %s", err.Error())
 	}
 }
