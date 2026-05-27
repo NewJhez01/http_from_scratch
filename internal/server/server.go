@@ -1,11 +1,13 @@
 package server
 
 import (
+	"io"
 	"log"
 	"net"
 	"strconv"
 	"sync/atomic"
 
+	"http_from_scratch/internal/request"
 	"http_from_scratch/internal/response"
 )
 
@@ -13,6 +15,13 @@ type Server struct {
 	listener net.Listener
 	closed   atomic.Bool
 }
+
+type HandlerError struct {
+	statusCode string
+	message    string
+}
+
+type Handler func(io.Writer, request.Request) *HandlerError
 
 func Serve(port int) (*Server, error) {
 	l, err := net.Listen("tcp", ":"+strconv.Itoa(port))
