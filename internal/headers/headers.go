@@ -25,8 +25,8 @@ func (h Headers) Parse(data []byte) (int, bool, error) {
 		return 2, true, nil
 	}
 
-	line := strings.Split(string(data), "\r\n")
-	parts := strings.Split(string(line[0]), ":")
+	lines := strings.Split(string(data), "\r\n")
+	parts := strings.Split(string(lines[0]), ":")
 	key := parts[0]
 	val := strings.Join(parts[1:], ":")
 
@@ -39,31 +39,25 @@ func (h Headers) Parse(data []byte) (int, bool, error) {
 	}
 
 	trimmedVal := strings.Trim(val, " ")
-	if validate(trimmedVal) == false {
-		return 0, false, errors.New("invalid format for val")
-	}
 
-	keyArr := strings.Split(key, "")
-	for i, v := range keyArr {
-		keyArr[i] = strings.ToLower(v)
-	}
+	header := toLower(key)
+	value := toLower(trimmedVal)
 
-	valArr := strings.Split(trimmedVal, "")
-	for i, v := range valArr {
-		valArr[i] = strings.ToLower(v)
-	}
-
-	header := strings.Join(keyArr, "")
-	value := strings.Join(valArr, "")
 	if h[header] != "" {
 		h[header] = fmt.Sprintf("%s, %s", h[header], value)
-		fmt.Println("header ", h[header])
 	} else {
 		h[header] = value
-		fmt.Println("header ", h[header])
 	}
 
-	return len(line[0]) + 2, false, nil
+	return len(lines[0]) + 2, false, nil
+}
+
+func toLower(val string) string {
+	arr := strings.Split(val, "")
+	for i, v := range arr {
+		arr[i] = strings.ToLower(v)
+	}
+	return strings.Join(arr, "")
 }
 
 func validate(v string) bool {

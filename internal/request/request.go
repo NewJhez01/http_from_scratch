@@ -44,9 +44,18 @@ func CreateNewRequest() *Request {
 func RequestFromReader(r io.Reader) (Request, error) {
 	buffer := make([]byte, bufferSize)
 	readToIndex := 0
-	req := Request{status: 0}
-	for req.status != 3 {
+	req := Request{status: requestLine}
+	for req.status != done {
+		if req.status == 2 &&
+			(req.Headers.Get("content-length") == "" ||
+				req.Headers.Get("content-length") == "0") {
+			req.status = 3
+			continue
+		}
 		n, err := r.Read(buffer[readToIndex:])
+		if err != nil {
+			fmt.Println("read error ", err.Error())
+		}
 		if err == io.EOF && n == 0 && readToIndex == 0 {
 			req.status = 3
 		}
@@ -70,7 +79,7 @@ func RequestFromReader(r io.Reader) (Request, error) {
 
 func (r *Request) parse(data []byte) (int, error) {
 	switch r.status {
-	case 0:
+	case requestLine:
 		rql, bytesParsed, err := parseRequestLine(data)
 		if err != nil {
 			return 0, errors.New("error")
@@ -79,25 +88,33 @@ func (r *Request) parse(data []byte) (int, error) {
 			return 0, nil
 		}
 		r.RequestLine = *rql
-		r.status = 1
+		r.status = header
 		r.Headers = headers.NewHeaders()
 		return bytesParsed, nil
-	case 1:
-		n, done, err := r.Headers.Parse(data)
-		if err != nil {
-			return 0, errors.New("failed to parse headers")
+	case header:
+		n := 0
+		for {
+			consumed, done, err := r.Headers.Parse(data[n:])
+			if err != nil {
+				return 0, errors.New("failed to parse headers")
+			}
+			n += consumed
+			if done == true {
+				r.status = body
+				return n, nil
+			}
+
+			if consumed == 0 {
+				return n, nil
+			}
 		}
-		if done == true {
-			r.status = 2
-		}
-		return n, nil
-	case 2:
+	case body:
 		r.Body = append(r.Body, data...)
 		return len(data), nil
-	case 3:
-		contenHeader := r.Headers["content-length"]
+	case done:
+		contentHeader := r.Headers["content-length"]
 		contentLen := 0
-		if contenHeader != "" {
+		if contentHeader != "" {
 			n, err := strconv.Atoi(r.Headers["content-length"])
 			if err != nil {
 				fmt.Println("error ", err.Error())
