@@ -37,6 +37,10 @@ type Request struct {
 	Body        []byte
 }
 
+func CreateNewRequest() *Request {
+	return &Request{}
+}
+
 func RequestFromReader(r io.Reader) (Request, error) {
 	buffer := make([]byte, bufferSize)
 	readToIndex := 0
