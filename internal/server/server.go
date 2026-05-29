@@ -3,7 +3,6 @@ package server
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"strconv"
@@ -20,15 +19,11 @@ type Server struct {
 }
 
 type HandlerError struct {
-	StatusCode string
+	StatusCode response.StatusCode
 	Message    string
 }
 
-type Handler func(io.Writer, request.Request) *HandlerError
-
-func writeError(w io.Writer, h HandlerError) {
-	fmt.Fprint(w, h.StatusCode, "\r\n", h.Message)
-}
+type Handler func(*response.ResponseWriter, request.Request) *HandlerError
 
 func Serve(port int, h Handler) (*Server, error) {
 	l, err := net.Listen("tcp", ":"+strconv.Itoa(port))
@@ -63,24 +58,45 @@ func (s *Server) listen() {
 	}
 }
 
+func writeError(w *response.ResponseWriter, h HandlerError) {
+	err := w.WriteStatusLine(h.StatusCode)
+	if err != nil {
+		logFatal(h.Message)
+	}
+	headers := response.GetDefaultHeaders(len(h.Message))
+	err = w.WriteHeaders(headers)
+	if err != nil {
+		logFatal(h.Message)
+	}
+	err = w.WriteBody(h.Message)
+	if err != nil {
+		logFatal(h.Message)
+	}
+}
+
+func logFatal(message string) {
+	log.Fatalf("total failure prev: %s", message)
+}
+
 func (s *Server) handle(conn net.Conn) {
 	defer conn.Close()
 	req, err := request.RequestFromReader(conn)
 	if err != nil {
 		log.Fatalf("failed to parse request")
 	}
-	b := bytes.NewBuffer([]byte{})
+	b := response.CreateNewWriter(bytes.NewBuffer([]byte{}))
 	hErr := s.handler(b, req)
+	w := response.CreateNewWriter(conn)
 	if hErr != nil {
-		writeError(conn, *hErr)
+		writeError(w, *hErr)
 	}
 
-	err = response.WriteStatusLine(conn, 200)
+	err = w.WriteStatusLine(200)
 	if err != nil {
 		log.Fatalf("unexpected error prev: %s", err.Error())
 	}
 	h := response.GetDefaultHeaders(len(req.Body))
-	err = response.WriteHeaders(conn, h)
+	err = w.WriteHeaders(h)
 	if err != nil {
 		log.Fatalf("unexpected error prev: %s", err.Error())
 	}
