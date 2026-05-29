@@ -18,8 +18,6 @@ func (h Headers) Get(key string) string {
 }
 
 func (h Headers) Parse(data []byte) (int, bool, error) {
-	fmt.Printf("Parse input: %q\n", string(data))
-
 	if !strings.Contains(string(data), "\r\n") {
 		return 0, false, nil
 	}
