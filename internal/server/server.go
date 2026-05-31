@@ -1,8 +1,6 @@
 package server
 
 import (
-	"bytes"
-	"fmt"
 	"log"
 	"net"
 	"strconv"
@@ -84,22 +82,9 @@ func (s *Server) handle(conn net.Conn) {
 	if err != nil {
 		log.Fatalf("failed to parse request")
 	}
-	b := response.CreateNewWriter(bytes.NewBuffer([]byte{}))
-	hErr := s.handler(b, req)
 	w := response.CreateNewWriter(conn)
+	hErr := s.handler(w, req)
 	if hErr != nil {
 		writeError(w, *hErr)
 	}
-
-	err = w.WriteStatusLine(200)
-	if err != nil {
-		log.Fatalf("unexpected error prev: %s", err.Error())
-	}
-	h := response.GetDefaultHeaders(len(req.Body))
-	err = w.WriteHeaders(h)
-	if err != nil {
-		log.Fatalf("unexpected error prev: %s", err.Error())
-	}
-	fmt.Fprint(conn, "\r\n")
-	fmt.Fprint(conn, b)
 }

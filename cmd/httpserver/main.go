@@ -40,5 +40,28 @@ func defaultHandler(w *response.ResponseWriter, r request.Request) *server.Handl
 			Message:    "unexpected error",
 		}
 	}
+	err := w.WriteStatusLine(response.StatusOK)
+	if err != nil {
+		return &server.HandlerError{
+			StatusCode: response.StatusInternalError,
+			Message:    "unexpected error",
+		}
+	}
+	body := "request successfull well done the http server works\n"
+	headers := response.GetDefaultHeaders(len([]byte(body)))
+	err = w.WriteHeaders(headers)
+	if err != nil {
+		return &server.HandlerError{
+			StatusCode: response.StatusBadRequest,
+			Message:    "bad request",
+		}
+	}
+	err = w.WriteBody(body)
+	if err != nil {
+		return &server.HandlerError{
+			StatusCode: response.StatusBadRequest,
+			Message:    "bad request",
+		}
+	}
 	return nil
 }

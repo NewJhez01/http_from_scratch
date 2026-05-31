@@ -75,6 +75,10 @@ func (w *ResponseWriter) WriteHeaders(h headers.Headers) error {
 			return err
 		}
 	}
+	_, err := w.writer.Write([]byte("\r\n"))
+	if err != nil {
+		return errors.New("failed to write crlf for header")
+	}
 	w.status = body
 	return nil
 }
