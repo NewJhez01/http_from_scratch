@@ -1,13 +1,13 @@
 package main
 
 import (
-	"io"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"http_from_scratch/internal/request"
+	"http_from_scratch/internal/response"
 	"http_from_scratch/internal/server"
 )
 
@@ -27,19 +27,41 @@ func main() {
 	log.Println("Server gracefully stopped")
 }
 
-func defaultHandler(w io.Writer, r request.Request) *server.HandlerError {
+func defaultHandler(w *response.ResponseWriter, r request.Request) *server.HandlerError {
 	if r.RequestLine.RequestTarget == "/yourproblem" {
 		return &server.HandlerError{
-			StatusCode: "400",
+			StatusCode: response.StatusBadRequest,
 			Message:    "bad request",
 		}
 	}
 	if r.RequestLine.RequestTarget == "/myproblem" {
 		return &server.HandlerError{
-			StatusCode: "500",
+			StatusCode: response.StatusInternalError,
 			Message:    "unexpected error",
 		}
 	}
-	w.Write([]byte("status: ok"))
+	err := w.WriteStatusLine(response.StatusOK)
+	if err != nil {
+		return &server.HandlerError{
+			StatusCode: response.StatusInternalError,
+			Message:    "unexpected error",
+		}
+	}
+	body := "request successfull well done the http server works\n"
+	headers := response.GetDefaultHeaders(len([]byte(body)))
+	err = w.WriteHeaders(headers)
+	if err != nil {
+		return &server.HandlerError{
+			StatusCode: response.StatusBadRequest,
+			Message:    "bad request",
+		}
+	}
+	err = w.WriteBody(body)
+	if err != nil {
+		return &server.HandlerError{
+			StatusCode: response.StatusBadRequest,
+			Message:    "bad request",
+		}
+	}
 	return nil
 }
